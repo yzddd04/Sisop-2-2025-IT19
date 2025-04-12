@@ -53,7 +53,7 @@ void downloadClues() {
 }
 
 void filterFiles() {
-    // Create Filtered directory if it doesn't exist
+    //  Buat direktori yang difilter jika belum ada
     mkdir("Filtered", 0755);
 
     DIR *dir;
@@ -73,7 +73,7 @@ void filterFiles() {
                     continue;
                 }
 
-                // Check if filename matches pattern (1 character: letter or digit)
+                // Periksa apakah nama file cocok dengan pola (1 karakter: huruf atau angka)
                 if (strlen(ent->d_name) == 5) { // e.g., "a.txt" is 5 chars
                     char *dot = strrchr(ent->d_name, '.');
                     if (dot && strcmp(dot, ".txt") == 0) {
@@ -82,7 +82,7 @@ void filterFiles() {
                         nameWithoutExt[1] = '\0';
 
                         if (isalnum(nameWithoutExt[0]) && !ispunct(nameWithoutExt[0])) {
-                            // Build source and destination paths
+                            // Buat source and destination paths
                             snprintf(path, sizeof(path), "%s/%s", clueDirs[i], ent->d_name);
                             snprintf(dest, sizeof(dest), "Filtered/%s", ent->d_name);
 
@@ -96,7 +96,7 @@ void filterFiles() {
         }
     }
 
-    // Delete unfiltered files
+    // Hapus unfiltered files
     for (int i = 0; i < numDirs; i++) {
         if ((dir = opendir(clueDirs[i])) != NULL) {
             while ((ent = readdir(dir)) != NULL) {
@@ -119,14 +119,14 @@ void combineFiles() {
     char content[256];
     char path[MAX_PATH];
 
-    // Open Combined.txt for writing
+    // Open Combined.txt untuk writing
     combined = fopen("Combined.txt", "w");
     if (!combined) {
         perror("Failed to create Combined.txt");
         return;
     }
 
-    // Open Filtered directory
+    // Buka Filtered directory
     if ((dir = opendir("Filtered")) == NULL) {
         perror("Failed to open Filtered directory");
         fclose(combined);
@@ -138,7 +138,7 @@ void combineFiles() {
         char filename[10];
         snprintf(filename, sizeof(filename), "%d.txt", i);
         
-        // Check if file exists
+        // Cek file
         snprintf(path, sizeof(path), "Filtered/%s", filename);
         if (access(path, F_OK) == 0) {
             file = fopen(path, "r");
@@ -151,7 +151,7 @@ void combineFiles() {
             }
         }
 
-        // Process corresponding letter file (a-z)
+        // Proses berkas surat yang sesuai (a-z)
         char letterFile[10];
         snprintf(letterFile, sizeof(letterFile), "%c.txt", 'a' + i - 1);
         
