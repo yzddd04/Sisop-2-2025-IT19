@@ -12,7 +12,7 @@
 
 ## Nomer 4 (Soal_4)
 
-###a)mengetahui semua aktivitas user
+### a)mengetahui semua aktivitas user
 
 ![image](https://github.com/user-attachments/assets/50abde7d-f2dc-4766-96d3-ffb252caf513)
 
@@ -28,7 +28,7 @@ Untuk memahami dan mengerjakan soal ini, kamu perlu menguasai materi berikut:
 - Perintah Linux untuk memantau proses
 - Penggunaan Pipe (|) dan Redirect (>, <)
 
-###b)Memasang mata-mata dalam mode daemon
+### b)Memasang mata-mata dalam mode daemon
 
 ![image](https://github.com/user-attachments/assets/e5e612d1-a9fd-4fc8-ab41-7642ae772ffb)
 
@@ -52,7 +52,7 @@ Materi yang Digunakan:
 - Penanganan File
 - (Opsional) Signal Handling
 
-###c)Menghentikan pengawasan
+### c)Menghentikan pengawasan
 
 ![image](https://github.com/user-attachments/assets/b5e8f0b0-03ac-4fa3-9c05-fa778a4d64ea)
 
@@ -76,17 +76,17 @@ Penjelasan Maksud Soal:
 
 
 
-###d)Menggagalkan proses user yang sedang berjalan
+### d)Menggagalkan proses user yang sedang berjalan
 
 ![image](https://github.com/user-attachments/assets/2135303d-455d-434b-a7b1-6c1db43c00fc)
 
 
 
-###e)Mengizinkan user untuk kembali menjalankan proses
+### e)Mengizinkan user untuk kembali menjalankan proses
 
 ![image](https://github.com/user-attachments/assets/61da9848-1805-4fe9-aa2f-b9bfd73c08c5)
 
-###f)Mencatat ke dalam file log
+### f)Mencatat ke dalam file log
 
 ![image](https://github.com/user-attachments/assets/1e896d4e-fe31-4767-9da8-1b9226f7dd3b)
 
