@@ -37,8 +37,8 @@ Daemon adalah program yang berjalan di background (latar belakang) secara terus-
 
 Doraemon ingin debugmon:
 - Tetap berjalan tanpa interaksi manual
-- Terus memantau proses milik '<user>'
-- Menyimpan hasil pemantauan ke dalam ''file.log'', bukan hanya tampil di layar
+- Terus memantau proses milik `<user>`
+- Menyimpan hasil pemantauan ke dalam `file.log`, bukan hanya tampil di layar
 
 Jadi, saat Doraemon mengetik perintah di atas:
 - debugmon akan berjalan sebagai proses daemon
@@ -69,10 +69,10 @@ Penjelasan Maksud Soal:
   - Menggunakan perintah 'ps', 'pgrep', atau 'pidof' untuk mencari proses berdasarkan nama atau argumen
   - Menghentikan proses dengan 'kill', 'killall', atau 'pkill'
 - Shell Scripting
-  - Menyimpan dan membaca 'PID' dari 'file .pid' (opsional, agar proses bisa dihentikan dengan tepat)
+  - Menyimpan dan membaca `PID` dari `file .pid` (opsional, agar proses bisa dihentikan dengan tepat)
   - Pengecekan apakah proses masih berjalan
 - Pengelolaan File dan Log
-  - Jika script menyimpan PID ke dalam file (misalnya 'debugmon_<user>.pid'), maka 'stop' dapat membaca file tersebut dan 'kill' berdasarkan isinya
+  - Jika script menyimpan PID ke dalam file (misalnya `debugmon_<user>.pid`), maka 'stop' dapat membaca file tersebut dan 'kill' berdasarkan isinya
 
 
 
@@ -80,11 +80,39 @@ Penjelasan Maksud Soal:
 
 ![image](https://github.com/user-attachments/assets/2135303d-455d-434b-a7b1-6c1db43c00fc)
 
+Penjelasan Maksud Soal:
+`debugmon fail <user>` adalah perintah untuk:
+- Menghentikan (`kill`) semua proses milik user tersebut yang sedang aktif.
+- Menulis informasi proses tersebut ke dalam log file dengan status FAILED.
+- Mencegah user menjalankan proses baru selama mode ini aktif (semacam "blokir sementara").
 
+Materi yang Digunakan untuk Mengerjakan Ini:
+1. Manajemen Proses di Linux
+2. Shell Scripting (lanjutan)
+Looping proses untuk log dan kill
+Redirect log ke file, misalnya `log_<user>.txt`, dengan tambahan status FAILED
+3. Blokir User dari Menjalankan Proses (Opsional, Lanjutan)
 
 ### e)Mengizinkan user untuk kembali menjalankan proses
 
 ![image](https://github.com/user-attachments/assets/61da9848-1805-4fe9-aa2f-b9bfd73c08c5)
+
+Penjelasan Maksud Soal:
+`debugmon revert <user>` dipakai untuk mengembalikan user ke kondisi normal setelah sebelumnya berada dalam mode FAIL.
+Dengan kata lain:
+User yang tadinya tidak bisa menjalankan proses apa pun → sekarang sudah bisa lagi.
+Status pengawasan "fail" dihapus.
+
+Materi yang Digunakan untuk Mengerjakan Ini:
+1. Shell Scripting (lanjutan)
+Menghapus flag atau file penanda bahwa user sedang dalam mode FAIL
+
+2. Logika Pemulihan Sistem
+Jika sebelumnya mode FAIL mencegah eksekusi proses via script daemon atau pemantauan background, maka revert akan:
+Menghapus indikator mode FAIL
+Memberi pesan bahwa mode normal telah dipulihkan
+
+
 
 ### f)Mencatat ke dalam file log
 
