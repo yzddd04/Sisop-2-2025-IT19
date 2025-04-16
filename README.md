@@ -16,7 +16,17 @@ a)mengetahui semua aktivitas user
 
 ![image](https://github.com/user-attachments/assets/50abde7d-f2dc-4766-96d3-ffb252caf513)
 
-Soal pada gambar tersebut menjelaskan sebuah skenario di mana Doraemon ingin mengetahui semua proses atau aktivitas yang sedang dijalankan oleh user tertentu di komputer. Untuk itu, dia mengetik perintah:
+Soal pada gambar tersebut menjelaskan sebuah skenario di mana Doraemon ingin mengetahui semua proses atau aktivitas yang sedang dijalankan oleh user tertentu di komputer. Program debugmon ini akan menampilkan daftar proses yang dijalankan oleh user tersebut, termasuk informasi berikut:
+- PID (Process ID): ID unik dari proses.
+- Command: Perintah atau nama program yang dijalankan.
+- CPU usage: Seberapa banyak CPU yang digunakan oleh proses itu.
+- Memory usage: Seberapa banyak memori RAM yang digunakan oleh proses itu.
+
+Materi yang digunakan untuk mengerjakan ini:
+Untuk memahami dan mengerjakan soal ini, kamu perlu menguasai materi berikut:
+- Shell Scripting / Bash
+- Perintah Linux untuk memantau proses
+- Penggunaan Pipe (|) dan Redirect (>, <)
 
 b)Memasang mata-mata dalam mode daemon
 
