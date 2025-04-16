@@ -38,7 +38,7 @@ Daemon adalah program yang berjalan di background (latar belakang) secara terus-
 Doraemon ingin debugmon:
 - Tetap berjalan tanpa interaksi manual
 - Terus memantau proses milik '<user>'
-- Menyimpan hasil pemantauan ke dalam 'file log', bukan hanya tampil di layar
+- Menyimpan hasil pemantauan ke dalam ''file.log'', bukan hanya tampil di layar
 
 Jadi, saat Doraemon mengetik perintah di atas:
 - debugmon akan berjalan sebagai proses daemon
