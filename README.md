@@ -23,9 +23,9 @@
 
 ```c
 ./action
-./action Filter
-./action Combine
-./action Decode
+./action -m Filter
+./action -m Combine
+./action -m Decode
 ```
 
 
