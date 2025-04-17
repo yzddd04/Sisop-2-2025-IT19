@@ -238,6 +238,31 @@ Untuk memahami dan mengerjakan soal ini, kamu perlu menguasai materi berikut:
 - Perintah Linux untuk memantau proses
 - Penggunaan Pipe (|) dan Redirect (>, <)
 
+Syntaxnya seperti ini
+
+```c
+void list_processes(const char *username) {
+  DIR *dir = opendir("/proc"); 
+  struct dirent *entry;
+  printf("PID\tCMD\tCPU\tMEM\n");
+  while ((entry = readdir(dir)) != NULL) {  
+      if (entry->d_type == DT_DIR && atoi(entry->d_name) > 0) {
+        if (is_process_owned_by_user(entry->d_name, username)) {
+            char cmd[MAX_PATH];
+            snprintf(cmd, sizeof(cmd), "ps -p %s -o pid=,comm=,%%cpu=,%%mem=", entry->d_name);
+            system(cmd);
+        }
+    }
+ }
+ closedir(dir); //menutup direktori /proc
+}
+```
+
+dan hasilnya :
+
+![image](https://github.com/user-attachments/assets/9eeeb24e-40d7-4200-889c-d874652e077d)
+
+
 ### b)Memasang mata-mata dalam mode daemon
 
 ![image](https://github.com/user-attachments/assets/e5e612d1-a9fd-4fc8-ab41-7642ae772ffb)
@@ -262,6 +287,52 @@ Materi yang Digunakan:
 - Penanganan File
 - (Opsional) Signal Handling
 
+Sintaxnya seperti ini :
+```c
+void daemonize(const char *username) { //menerima parameter username untuk user siapa yang akan dipantau
+ pid_t pid = fork(); //membuat child process dengan fork
+ if (pid < 0) exit(1);
+ if (pid > 0) {
+   FILE *pid_file = fopen(PID_FILE, "w");
+   if (pid_file) {
+        fprintf(pid_file, "%d", pid);
+        fclose(pid_file);
+    }
+   exit(0);
+}
+setsid(); //membuat proses baru
+while (1) {
+    DIR *dir = opendir("/proc");
+    struct dirent *entry;       //Buka direktori /proc dan siapkan entry untuk membaca isi direktori tersebut
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_DIR && atoi(entry->d_name) > 0) {
+            if (is_process_owned_by_user(entry->d_name, username)) {
+                char path[300], process_name[256];
+                snprintf(path, sizeof(path), "/proc/%s/comm", entry->d_name);
+                FILE *fp = fopen(path, "r");
+                if (fp) {
+                    if (fgets(process_name, sizeof(process_name), fp) != NULL) {
+                        strtok(process_name, "\n"); // hapus newline
+                        log_process(process_name, "RUNNING");
+                    }
+                    fclose(fp);
+                }
+            }
+        }
+    }
+    closedir(dir);
+    sleep(5);
+}
+}
+```
+
+dan hasilnya :
+
+![image](https://github.com/user-attachments/assets/af24ac35-d3b3-4149-91ef-6be9e63d9336)
+
+
+
+
 ### c)Menghentikan pengawasan
 
 ![image](https://github.com/user-attachments/assets/b5e8f0b0-03ac-4fa3-9c05-fa778a4d64ea)
@@ -283,6 +354,32 @@ Penjelasan Maksud Soal:
   - Pengecekan apakah proses masih berjalan
 - Pengelolaan File dan Log
   - Jika script menyimpan PID ke dalam file (misalnya `debugmon_<user>.pid`), maka 'stop' dapat membaca file tersebut dan 'kill' berdasarkan isinya
+ 
+Sintaxnya seperti ini :
+```c
+void stop_daemon(const char *username) {
+    FILE *pid_file = fopen(PID_FILE, "r");
+    if (!pid_file) {
+        perror("Gagal membuka file PID. Apakah daemon sedang berjalan?");
+        return;
+    }
+
+    int pid;
+    fscanf(pid_file, "%d", &pid);
+    fclose(pid_file);
+
+    if (kill(pid, SIGTERM) == 0) {
+        printf("Proses daemon (PID %d) dihentikan.\n", pid);
+        remove(PID_FILE); // hapus file PID
+    } else {
+        perror("Gagal menghentikan daemon");
+    }
+}
+```
+
+dan hasilnya :
+
+![image](https://github.com/user-attachments/assets/3511b98d-c456-44b9-a9ab-c61f4c0e688a)
 
 
 
@@ -303,6 +400,41 @@ Looping proses untuk log dan kill
 Redirect log ke file, misalnya `log_<user>.txt`, dengan tambahan status FAILED
 3. Blokir User dari Menjalankan Proses (Opsional, Lanjutan)
 
+Sintaxnya seperti ini :
+```c
+void fail_processes(const char *username) {
+    DIR *dir = opendir("/proc");
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_DIR && atoi(entry->d_name) > 0) {
+            if (is_process_owned_by_user(entry->d_name, username)) {
+                char path[256], process_name[256];
+                snprintf(path, sizeof(path), "/proc/%.20s/comm", entry->d_name);
+                FILE *fp = fopen(path, "r");
+                if (fp) {
+                    if (fgets(process_name, sizeof(process_name), fp) != NULL) {
+                        strtok(process_name, "\n");
+                        log_process(process_name, "FAILED");
+                    }
+                    fclose(fp);
+                }
+                kill(atoi(entry->d_name), SIGKILL);
+            }
+        }
+    }
+    closedir(dir);
+}
+```
+
+dan hasilnya :
+
+![image](https://github.com/user-attachments/assets/e261b929-b705-41c7-b67b-281578cd35d7)
+
+dan juga catatanya :
+
+![image](https://github.com/user-attachments/assets/e6a259a0-6199-4b9f-9614-3b494f5949d8)
+
+
 ### e)Mengizinkan user untuk kembali menjalankan proses
 
 ![image](https://github.com/user-attachments/assets/61da9848-1805-4fe9-aa2f-b9bfd73c08c5)
@@ -321,6 +453,35 @@ Menghapus flag atau file penanda bahwa user sedang dalam mode FAIL
 Jika sebelumnya mode FAIL mencegah eksekusi proses via script daemon atau pemantauan background, maka revert akan:
 Menghapus indikator mode FAIL
 Memberi pesan bahwa mode normal telah dipulihkan
+
+Sintaksnya seperti ini :
+```c
+void revert_processes(const char *username) {
+    log_process("revert", "RUNNING");
+    printf("User %s sekarang bisa menjalankan proses lagi\n", username);
+}
+
+
+void tulis_log(const char *nama_proses, const char *status) {
+    FILE *log = fopen(LOG_FILE, "a");
+    if (!log) {
+        perror("Gagal membuka file log");
+        return;
+    }
+
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+
+    fprintf(log, "[%02d:%02d:%04d]-[%02d:%02d:%02d]_%s_%s\n",
+        t->tm_mday, t->tm_mon + 1, t->tm_year + 1900,
+        t->tm_hour, t->tm_min, t->tm_sec,
+        nama_proses, status);
+    fclose(log);
+}
+```
+ dan hasilnya :
+
+ ![image](https://github.com/user-attachments/assets/3985b040-9f33-4b6f-b7d6-469cc5ddd38b)
 
 
 
@@ -372,6 +533,26 @@ Kalau kamu lagi bikin proyek atau latihan, ini biasanya masuk ke dalam:
 - Sistem monitoring proses,
 - Otomatisasi log aktivitas sistem (misal: untuk keperluan debugging atau audit),
 - Bagian dari program daemon kecil di Linux.
+
+Sintaksnya seperti ini :
+```c
+void log_process(const char *proc_name, const char *status) {
+  FILE *log = fopen(LOG_FILE, "a");
+  if (!log) return;
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+  fprintf(log, "[%02d:%02d:%04d]-[%02d:%02d:%02d]_%s_%s\n",
+         t->tm_mday, t->tm_mon + 1, t->tm_year + 1900,
+         t->tm_hour, t->tm_min, t->tm_sec,
+         proc_name, status);
+  fclose(log);
+}
+```
+
+dan hasilnya :
+
+![image](https://github.com/user-attachments/assets/455893f4-9ef7-4dc3-8c6c-c786d9eeeaea)
+
 
 
 
