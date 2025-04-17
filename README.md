@@ -51,7 +51,7 @@ void downloadClues() {
 ```
 
 B. Setelah berhasil download, membuat file direktori Filtered, kemudian memfilter folder petunjuk file file ClueA, ClueB, ClueC, ClueD. Setelah itu di setiap folder, akan mencari file `.txt` dengan nama 1 karakter alfanumerik seperti a.txt, 1.txt, dll. Kemudian memindahkan file nya ke folder Filtered, kemudian menghapus semua file tersisa di dalam folder ClueA-D yang tidak dipindahkan.
-```
+```c
 void filterFiles() {
     //  Buat direktori yang difilter jika belum ada
     mkdir("Filtered", 0755);
@@ -120,7 +120,7 @@ C. Setelah itu, membuat file Combined.txt, kemudian membuka folder Filtered deng
         return;
     }`, kemudian membaca dan menggabungkan isi file berama 1.txt sampai 9.txt, a-z.txt ke dalam combined.txt, dan untuk setiap angka i, juga gabungkan isi file a.txt hingga i-th letter.txt (a.txt, b.txt, ..., i-th letter.txt) ke dalam Combined.txt. Kemdudian menghapus setiap file setelah digabungkan.
 
-```
+```c
 void combineFiles() {
     DIR *dir;
     struct dirent *ent;
@@ -183,7 +183,7 @@ void combineFiles() {
 ```
 
 D. Kemudian mendecode the file, pertama tama membuka file Combined.txt untuk membaca isi nya, kemudian membuka file Decoded.txt dan melakkan decode ROT13 pada setiap karakter, kemudian menulis hasil nya ke Decoded.txt.
-```
+```c
 void decodeFile() {
     FILE *combined, *decoded;
     char ch;
