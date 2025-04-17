@@ -328,5 +328,51 @@ Memberi pesan bahwa mode normal telah dipulihkan
 
 ![image](https://github.com/user-attachments/assets/1e896d4e-fe31-4767-9da8-1b9226f7dd3b)
 
+Gambar yang kamu lampirkan menjelaskan tentang **pencatatan log proses oleh program bernama `debugmon`**. Berikut penjelasan lebih rinci:
+
+**Maksud Soal**
+Soal ini ingin kamu membuat atau memahami **fitur pencatatan log proses** ke dalam file bernama `debugmon.log`, dengan format tertentu. Ini dilakukan sebagai dokumentasi untuk melacak aktivitas yang dilakukan oleh `debugmon` pada komputer user.
+
+**Format log-nya adalah seperti ini:**
+
+```
+[dd:mm:yyyy]-[hh:mm:ss]_nama-process_STATUS(RUNNING/FAILED)
+```
+
+Contoh log:
+```
+17:04:2025-15:30:00_backup-process_STATUS(RUNNING)
+17:04:2025-15:35:00_cleanup_STATUS(FAILED)
+```
+
+Keterangan tambahan:
+- Untuk proses dari poin **b, c, dan e** → statusnya dicatat sebagai `RUNNING`.
+- Untuk proses dari poin **d** → statusnya `FAILED`.
+
+**Materi yang Terkandung**
+
+1. **Pemrograman C (atau Shell Script) Dasar**  
+   Mencatat ke dalam file (`fopen`, `fprintf`, `fclose` di C) atau redirection (`>>`) di shell.
+
+2. **Manajemen Proses**
+   - Mengetahui nama proses yang sedang berjalan.
+   - Mengecek apakah proses berhasil atau gagal.
+
+3. **Logging**
+   - Membuat file log dan menulis informasi proses ke dalamnya.
+   - Format standar waktu (`date`, `time`).
+
+4. **Pemformatan String dan Waktu**
+   - Menggunakan format waktu: hari, bulan, tahun, jam, menit, detik.
+
+5. **Pengambilan Status Proses**
+   - Menentukan apakah proses `RUNNING` atau `FAILED` berdasarkan hasil dari aksi tertentu.
+
+Kalau kamu lagi bikin proyek atau latihan, ini biasanya masuk ke dalam:
+- Sistem monitoring proses,
+- Otomatisasi log aktivitas sistem (misal: untuk keperluan debugging atau audit),
+- Bagian dari program daemon kecil di Linux.
+
+
 
 
