@@ -84,7 +84,16 @@ while (1) {
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_DIR && atoi(entry->d_name) > 0) {
             if (is_process_owned_by_user(entry->d_name, username)) {
-                log_process(entry->d_name, "RUNNING");
+                char path[300], process_name[256];
+                snprintf(path, sizeof(path), "/proc/%s/comm", entry->d_name);
+                FILE *fp = fopen(path, "r");
+                if (fp) {
+                    if (fgets(process_name, sizeof(process_name), fp) != NULL) {
+                        strtok(process_name, "\n"); // hapus newline
+                        log_process(process_name, "RUNNING");
+                    }
+                    fclose(fp);
+                }
             }
         }
     }
